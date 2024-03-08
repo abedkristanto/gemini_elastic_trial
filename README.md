@@ -38,7 +38,10 @@ You can also try asking for related urls and availability --> leveraging private
 
 ### Following questions are for multimodal Gemini
 
-After uploading the image (e.g. ) try queries like this one:
+After uploading the image (e.g. <img width="341" alt="Screenshot 2024-03-08 at 17 44 22" src="https://github.com/valerioarvizzigno/homecraft_gemini/assets/122872322/1db285d7-6a8a-463b-8e66-13bd3ea63133">
+) 
+
+try queries like this one:
 
 - What's in the image? Do you have similar products in your catalog? If yes list them with descriptions and prices
 
