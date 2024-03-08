@@ -13,7 +13,7 @@ too see details around how to configure all the components have a look at this r
 
 ## Sample questions
 
----USE THE HOME PAGE FOR BASE DEMO---
+### Following questions are for text only Gemini
 
 Try queries like: 
 
@@ -35,4 +35,10 @@ You can also try asking for related urls and availability --> leveraging private
 - Which product are available in the product catalog for the Bathroom category? Give a short description of each product
 
 - List all the items I have bought in my order history in bullet points
+
+### Following questions are for multimodal Gemini
+
+After uploading the image (e.g. ) try queries like this one:
+
+- What's in the image? Do you have similar products in your catalog? If yes list them with descriptions and prices
 

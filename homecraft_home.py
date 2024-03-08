@@ -1,8 +1,10 @@
 import os
+import pandas as pd
+from io import StringIO
 import streamlit as st
 from elasticsearch import Elasticsearch
 import vertexai
-from vertexai.preview.generative_models import GenerativeModel, ChatSession, GenerationConfig
+from vertexai.preview.generative_models import GenerativeModel, ChatSession, GenerationConfig, Image, Part
 
 # This code shows VertexAI GenAI integration with Elastic Vector Search features
 # to connect publicly trained LLMs with private data
@@ -41,6 +43,7 @@ generation_config = GenerationConfig(
 vertexai.init(project=projid, location="us-central1")
 
 model = GenerativeModel("gemini-pro")
+visionModel = GenerativeModel("gemini-1.0-pro-vision-001")
 #Gemini can hold chat history in the chat variable. Pass this variable every time along with the prompt one. 
 #chat = model.start_chat()
 
@@ -199,33 +202,70 @@ def generateResponse(prompt):
     )
     return response.text
 
+def generateVisionResponse(prompt, image):
+    image_bytes_data = image.getvalue()
+    convertedImage = Part.from_image(Image.from_bytes(image_bytes_data))
+    response = visionModel.generate_content(
+        [
+        convertedImage,
+        prompt
+        ], generation_config = generation_config
+    )
+    return response.text
+
 
 #image = Image.open('homecraft_logo.jpg')
-st.image("https://i.imgur.com/cdjafe0.png", caption=None)
-st.title("HomeCraft Search Bar")
+st.set_page_config(layout="wide") 
+
+with st.container():
+    c1, c2, c3 = st.columns([1,1,1])
+    with c1:
+        pass
+    with c2:
+        st.image("https://i.imgur.com/cdjafe0.png", caption=None)
+    with c3:
+        pass
+    
+    st.title("HomeCraft e-commerce search bar")
+
+with st.container():
+    left_column, right_column = st.columns([2,1])
 
 # Main chat form
-with st.form("chat_form"):
-    query = st.text_input("You: ")
-    submit_button = st.form_submit_button("Send")
+with left_column:
+    with st.form("chat_form"):
+        query = st.text_input("You: ")
+        submit_button = st.form_submit_button("Submit")
+#image load component
+with right_column:
+    uploaded_file = st.file_uploader("Add an image to your prompt (.png or .jpg)", ['png','jpg'])
 
 # Generate and display response on form submission
 negResponse = "I'm unable to answer the question based on the information I have from Homecraft dataset."
 if submit_button:
+    queryForElastic = ''
+    answerVision = ''
+    if uploaded_file is not None:
+        visionQuery = 'What is in the picture?'
+        answerVision = generateVisionResponse(visionQuery,uploaded_file)
+        #To Elastic, for semantic search, we send both the question and the first answer from the vision model
+        queryForElastic = query + answerVision 
+        st.write(f"**Vision assistant answer:**  \n\n{answerVision.strip()}")
+    
     es = es_connect(cid, cu, cp)
-    resp_products, url_products = search_products(query)
-    resp_docs, url_docs = search_docs(query)
+    resp_products, url_products = search_products(query if queryForElastic == '' else queryForElastic)
+    resp_docs, url_docs = search_docs(query if queryForElastic == '' else queryForElastic)
     resp_order_items = search_orders(1) # 1 is the hardcoded userid, to simplify this scenario. You should take user_id by user session
     #prompt = f"You are an e-commerce AI assistant. Answer this question: {query} using this context: \n{resp_products} \n {resp_docs} \n {resp_order_items}."
     #prompt = f"You are an e-commerce AI assistant. Answer this question: {query}.\n If product information is requested use the information provided in this JSON: {resp_products} listing the identified products in bullet points with this format: Product name, product key features, price, web url. \n For other questions use the documentation provided in these docs: {resp_docs} and your own knowledge. \n If the question contains requests for user past orders consider the following order list: {resp_order_items}"
-    prompt = [f"You are an e-commerce AI assistant.", f"You answer question around product catalog, general company information and user past orders", f"Answer this question: {query}.", f"Context: Product catalog = {resp_products}; General information = {resp_docs}; Past orders = {resp_order_items} "]
+    prompt = [f"You are an e-commerce AI assistant.", f"You answer question around product catalog, general company information and user past orders", f"Answer this question: {query}.", f"Context: Picture content = {answerVision}; Product catalog = {resp_products}; General information = {resp_docs}; Past orders = {resp_order_items} "]
     #prompt = f"You are an e-commerce customer AI assistant. Answer this question: {query}.\n with your own knowledge and using the information provided in the context. Context: JSON product catalog: {resp_products} \n, these docs: \n {resp_docs} \n and this user order history: \n {resp_order_items}"
     #answer = vertexAI(chat, prompt)
     answer = generateResponse(prompt)
 
     if answer.strip() == '':
-        st.write(f"Search Assistant: \n\n{answer.strip()}")
+        st.write(f"**Elastic-powered Assistant:** \n\n{answer.strip()}")
     else:
-        st.write(f"Search Assistant: \n\n{answer.strip()}\n\n")
-        st.write(f"Order items: {resp_order_items}")
+        st.write(f"**Elastic-powered Assistant:** \n\n{answer.strip()}\n\n")
+        #st.write(f"Order items: {resp_order_items}")
 
